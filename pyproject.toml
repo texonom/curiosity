@@ -3,10 +3,11 @@ authors = [
   {name = "seonglae", email = "sungle3737@gmail.com"},
 ]
 dependencies = [
-  "fire>=0.5.0",
-  "transformers>=4.34.0",
-  "torch==2.1.0+cu118",
-  "chromadb>=0.4.14",
+    "fire>=0.5.0",
+    "transformers>=4.34.0",
+    "torch==2.1.0+cu118",
+    "chromadb>=0.4.14",
+    "datasets>=2.14.5",
 ]
 description = "Add your description here"
 name = "curiosity"
