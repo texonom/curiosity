@@ -8,6 +8,7 @@ dependencies = [
     "torch==2.1.0+cu118",
     "chromadb>=0.4.14",
     "datasets>=2.14.5",
+    "teicli>=0.3.1",
 ]
 description = "Add your description here"
 name = "curiosity"
