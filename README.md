@@ -37,3 +37,9 @@ python hf_upload.py dataset
 ```
 
 5. Use embedding for recommendation
+
+
+
+## Plan
+- [ ] from dictionary dataset without id duplicating (prefer recent one)
+- [ ] dataset tagging with date 
