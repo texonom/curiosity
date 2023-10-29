@@ -4,22 +4,36 @@ Our civilization is built on curiosity. Curiosity recommender system's object is
 
 ## Processing
 
-1. Data generation
-2. Data to Markdown
-   1~2 processings are done by [`texonom/notion-node`](https://github.com/texonom/notion-node)
+1. Notion.so raw data generation
+2. Nosion.so raw data to markdown
+
+1~2 processings are done by [`texonom/notion-node`](https://github.com/texonom/notion-node)
 
 3. Markdown to Huggingface dataset
 
-```bash
-python hf.py upload_markdown
+```sh
+git clone https://github.com/texonom/texonom-md
+python hf_upload.py chroma
 ```
 
-4. Markdown to text extracted dataset
+4. Extracted dataset to embedding
 
-5. Extracted dataset to embedding
+Run chroma server
 
-```bash
-python hf.py upload_embedding
+```sh
+pm2 start conf/chroma.json
 ```
 
-6. Use embedding for recommendation
+Run embedding server
+
+```sh
+volume=data
+model=thenlper/gte-small
+docker run -d --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingface/text-embeddings-inference:0.3.0 --model-id $model
+```
+
+```bash
+python hf_upload.py dataset
+```
+
+5. Use embedding for recommendation
