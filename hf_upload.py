@@ -7,23 +7,21 @@ import aiohttp
 import fire
 import chromadb
 from datasets import load_dataset, Dataset
-from huggingface_hub import HfApi
-import nest_asyncio
 from tei import TEIClient
+from huggingface_hub import HfApi
+
+from curiosity.data import load_documents
 
 
-nest_asyncio.apply()
-
-
-async def chroma(dataset_id="texonom/texonom-md",
-                 model_id="thenlper/gte-small", user="seonglae",
-                 prefix="", subset=None, token=None, stream=False,
-                 chroma_host="localhost", chroma_port='8000',
-                 tei_host="localhost", tei_port='8080', tei_protocol="http",
-                 chroma_path="chroma", batch_size=1000, start_index=None, end_index=None):
+def chroma(dataset_id="texonom/texonom-md",
+           model_id="thenlper/gte-small", user="texonom",
+           prefix="", subset=None, token=None, stream=False,
+           chroma_host="localhost", chroma_port='8888',
+           tei_host="localhost", tei_port='8080', tei_protocol="http",
+           chroma_path="chroma", batch_size=1000, start_index=None, end_index=None):
   # Load DB and dataset
   db = chromadb.HttpClient(chroma_host, chroma_port)
-  collection = db.get_or_create_collection(dataset_id)
+  collection = db.get_or_create_collection('texonom-md')
   dataset = load_dataset(dataset_id, subset, streaming=stream)['train']
 
   # Filter dataset
@@ -40,12 +38,15 @@ async def chroma(dataset_id="texonom/texonom-md",
   def batch_encode(batch_data: Dict) -> Dict:
     start = time.time()
     batch_zip = zip(batch_data['id'], batch_data['title'],
-                    batch_data['url'], batch_data['text'])
-    rows = [{'id': row[0], 'title': row[1], 'url': row[2], 'text': row[3]}
+                    batch_data['refs'], batch_data['text'], batch_data['parent'], batch_data['created'],
+                    batch_data['edited'], batch_data['creator'], batch_data['editor'])
+    rows = [{'id': row[0], 'title': row[1], 'refs': row[2], 'text': row[3], 'parent': row[4], 'created': row[5], 'edited': row[6], 'creator': row[7], 'editor': row[8]}
             for row in batch_zip]
-    input_texts = [f"{prefix}{row['title']}\n{row['text']}" for row in rows]
-    embeddings = teiclient.embed_batch_sync(input_texts, model_id)
-    metadatas = [{'title': row['title'], 'url': row['url']} for row in rows]
+    input_texts = [
+        f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
+    embeddings = teiclient.embed_batch_sync(input_texts)
+    metadatas = [{'title': row['title'] if row['title'] is not None else '', 'created': row['created'] if row['created'] is not None else '', 'edited': row['edited'] if row['edited'] is not None else '',
+                  'creator': row['creator'] if row['creator'] is not None else '', 'editor': row['editor'] if row['editor'] is not None else ''} for row in rows]
     collection.upsert(ids=batch_data['id'], embeddings=embeddings,
                       documents=batch_data['text'], metadatas=metadatas)
     print(
@@ -58,13 +59,24 @@ async def chroma(dataset_id="texonom/texonom-md",
   # Upload to Huggingface Hub
   if token is not None:
     api = HfApi(token=token)
-    api.create_repo(f'{user}/chroma-{dataset_id}',
+    api.create_repo(f"{user}/md-chroma-{model_id.split('/')[1]}",
                     repo_type="dataset", exist_ok=True)
     api.upload_folder(
-        folder_path=f'{chroma_path}/{dataset_id}',
+        folder_path=f'{chroma_path}',
         repo_id=f"{user}/md-chroma-{model_id.split('/')[1]}",
         repo_type="dataset",
     )
+
+
+def dataset(path='texonom-md', token=None):
+  documents = load_documents(path)
+  # for ignore root page that has limited property
+  dataset = Dataset.from_list(documents[1:])
+  print(f'Properteis: {dataset.column_names}')
+
+  # Upload to Huggingface Hub
+  if token is not None:
+    dataset.push_to_hub(f'texonom/{path}', token=token)
 
 
 if __name__ == '__main__':
