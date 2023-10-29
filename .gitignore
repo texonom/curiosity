@@ -14,9 +14,15 @@ wheels/
 *.tsv
 
 # chroma
-chroma
 *.sqlite3
 *.bin
+*.pickle
+chroma.log
+chroma.sqlite3-journal
+chroma
 
 # mypy
 .dmypy.json
+
+# local
+texonom-md

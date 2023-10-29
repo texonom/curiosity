@@ -1,0 +1,19 @@
+{
+  "apps": [
+    {
+      "name": "chroma",
+      "script": ".venv/Scripts/chroma.exe",
+      "args": [
+        "run",
+        "--port",
+        "8000",
+        "--path",
+        "chroma"
+      ],
+      "wait_ready": false,
+      "autorestart": false,
+      "max_restarts": 5,
+      "interpreter": "none"
+    }
+  ]
+}
