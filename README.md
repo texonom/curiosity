@@ -29,7 +29,7 @@ Run embedding server
 ```sh
 volume=data
 model=thenlper/gte-small
-docker run -d --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingface/text-embeddings-inference:0.3.0 --model-id $model
+docker run -d --name tei --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingface/text-embeddings-inference:0.3.0 --model-id $model
 ```
 
 ```bash
