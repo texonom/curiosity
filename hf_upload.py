@@ -40,13 +40,17 @@ def chroma(dataset_id="texonom/texonom-md",
     batch_zip = zip(batch_data['id'], batch_data['title'],
                     batch_data['refs'], batch_data['text'], batch_data['parent'], batch_data['created'],
                     batch_data['edited'], batch_data['creator'], batch_data['editor'])
-    rows = [{'id': row[0], 'title': row[1], 'refs': row[2], 'text': row[3], 'parent': row[4], 'created': row[5], 'edited': row[6], 'creator': row[7], 'editor': row[8]}
+    rows = [{'id': row[0], 'title': row[1], 'refs': row[2], 'text': row[3], 'parent': row[4],
+             'created': row[5], 'edited': row[6], 'creator': row[7], 'editor': row[8]}
             for row in batch_zip]
     input_texts = [
         f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
     embeddings = teiclient.embed_batch_sync(input_texts)
-    metadatas = [{'title': row['title'] if row['title'] is not None else '', 'created': row['created'] if row['created'] is not None else '', 'edited': row['edited'] if row['edited'] is not None else '',
-                  'creator': row['creator'] if row['creator'] is not None else '', 'editor': row['editor'] if row['editor'] is not None else ''} for row in rows]
+    metadatas = [{'title': row['title'] if row['title'] is not None else '',
+                  'created': row['created'] if row['created'] is not None else '',
+                  'edited': row['edited'] if row['edited'] is not None else '',
+                  'creator': row['creator'] if row['creator'] is not None else '',
+                  'editor': row['editor'] if row['editor'] is not None else ''} for row in rows]
     collection.upsert(ids=batch_data['id'], embeddings=embeddings,
                       documents=batch_data['text'], metadatas=metadatas)
     print(
