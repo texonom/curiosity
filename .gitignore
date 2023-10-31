@@ -21,6 +21,9 @@ chroma.log
 chroma.sqlite3-journal
 chroma
 
+# faiss
+faiss
+
 # mypy
 .dmypy.json
 

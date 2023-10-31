@@ -5,13 +5,71 @@ import asyncio
 import aiohttp
 
 import fire
+from faiss import write_index, IndexHNSWFlat
 import chromadb
 from datasets import load_dataset, Dataset
 from tei import TEIClient
 from huggingface_hub import HfApi
 
 from curiosity.data import load_documents
+from curiosity.faiss import DenseHNSWFlatIndexer
 
+def faiss(dataset_id="texonom/texonom-md",
+           model_id="thenlper/gte-small", user="texonom",
+           prefix="", subset=None, token=None, stream=False,
+           tei_host="localhost", tei_port='8080', tei_protocol="http",
+           faiss_path="faiss", batch_size=1000, start_index=None, end_index=None):
+  dataset = load_dataset(dataset_id, subset, streaming=stream)['train']
+
+  # Filter dataset
+  if not stream and end_index is not None:
+    dataset = dataset[:int(end_index)]
+    dataset = Dataset.from_dict(dataset)
+  if not stream and start_index is not None:
+    dataset = dataset[int(start_index):]
+    dataset = Dataset.from_dict(dataset)
+
+  # Batch processing function
+  teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol)
+  total_embeddings = []
+  total_ids = []
+  def batch_encode(batch_data: Dict) -> Dict:
+    start = time.time()
+    batch_zip = zip(batch_data['id'], batch_data['title'],
+                    batch_data['refs'], batch_data['text'], batch_data['parent'], batch_data['created'],
+                    batch_data['edited'], batch_data['creator'], batch_data['editor'])
+    rows = [{'id': row[0], 'title': row[1], 'refs': row[2], 'text': row[3], 'parent': row[4],
+             'created': row[5], 'edited': row[6], 'creator': row[7], 'editor': row[8]}
+            for row in batch_zip]
+    input_texts = [
+        f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
+    embeddings = teiclient.embed_batch_sync(input_texts)
+    total_embeddings.append(*embeddings)
+    total_ids.append(*batch_data['id'])
+    print(
+        f"Batched {len(batch_data['id'])}rows takes ({time.time() - start:.2f}s)")
+    return {'embeddings': embeddings, 'query': input_texts}
+
+  # Batch processing
+  dataset.map(batch_encode, batched=True, batch_size=batch_size)
+  index = IndexHNSWFlat(len(total_embeddings[0]), 512)
+  index.hnsw.efConstruction = 200
+  index.hnsw.efSearch = 128
+  index.index_data(list(zip(total_ids, total_embeddings)))
+  index.train()
+  index.add(total_embeddings, total_ids)
+  write_index(index, f"{faiss_path}/faiss.index")
+  
+  # Upload to Huggingface Hub
+  if token is not None:
+    api = HfApi(token=token)
+    api.create_repo(f"{user}/md-chroma-{model_id.split('/')[1]}",
+                    repo_type="dataset", exist_ok=True)
+    api.upload_folder(
+        folder_path=f'{faiss_path}',
+        repo_id=f"{user}/md-chroma-{model_id.split('/')[1]}",
+        repo_type="dataset",
+    )
 
 def chroma(dataset_id="texonom/texonom-md",
            model_id="thenlper/gte-small", user="texonom",
