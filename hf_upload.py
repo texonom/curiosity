@@ -48,6 +48,9 @@ def faiss(dataset_id="texonom/texonom-md",
     embeddings = teiclient.embed_batch_sync(input_texts)
     total_embeddings.extend(embeddings)
     total_ids.extend(batch_data['id'])
+    print()
+    print()
+    print()
     print(
         f"Batched {len(batch_data['id'])}rows takes ({time.time() - start:.2f}s)")
     return {'embeddings': embeddings, 'query': input_texts}
@@ -68,11 +71,11 @@ def faiss(dataset_id="texonom/texonom-md",
   # Upload to Huggingface Hub
   if token is not None:
     api = HfApi(token=token)
-    api.create_repo(f"{user}/md-chroma-{model_id.split('/')[1]}",
+    api.create_repo(f"{user}/md-faiss-{model_id.split('/')[1]}",
                     repo_type="dataset", exist_ok=True)
     api.upload_folder(
         folder_path=f'{faiss_path}',
-        repo_id=f"{user}/md-chroma-{model_id.split('/')[1]}",
+        repo_id=f"{user}/md-faiss-{model_id.split('/')[1]}",
         repo_type="dataset",
     )
 
