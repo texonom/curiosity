@@ -10,9 +10,24 @@ import chromadb
 from datasets import load_dataset, Dataset
 from tei import TEIClient
 from huggingface_hub import HfApi
-from faiss import write_index, IndexHNSWFlat
+import faiss as vdb
 
 from curiosity.data import load_documents
+
+
+def dataset(path='texonom-md', token=None):
+  documents = load_documents(path)
+  # for ignore root page that has limited property
+  dataset = Dataset.from_list(documents[1:])
+  print(f'Properteis: {dataset.column_names}')
+
+  # Upload to Huggingface Hub
+  if token is not None:
+    dataset.push_to_hub(f'texonom/{path}', token=token)
+
+
+if __name__ == '__main__':
+  fire.Fire()
 
 
 def faiss(dataset_id="texonom/texonom-md",
@@ -58,15 +73,15 @@ def faiss(dataset_id="texonom/texonom-md",
   # Batch processing
   dataset.map(batch_encode, batched=True, batch_size=batch_size)
 
-  index = IndexHNSWFlat(len(total_embeddings[0]), 512)
+  index = vdb.IndexHNSWFlat(len(total_embeddings[0]), 512)
   index.hnsw.efConstruction = 200
   index.hnsw.efSearch = 128
-  embeddings = np.array([np.array(embedding) for embedding in total_embeddings])
-  index.train(embeddings)
-  index.add(embeddings)
+  embeddings = np.array([np.array(embedding)
+                        for embedding in total_embeddings])
+  index.add(embeddings, len(total_embeddings[0]))
   with open(f"{faiss_path}/faiss.ids", 'w', encoding='utf-8') as f:
     f.write('\n'.join(total_ids))
-  write_index(index, f"{faiss_path}/faiss.index")
+  vdb. write_index(index, f"{faiss_path}/faiss.index")
 
   # Upload to Huggingface Hub
   if token is not None:
