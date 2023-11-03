@@ -10,24 +10,59 @@ import chromadb
 from datasets import load_dataset, Dataset
 from tei import TEIClient
 from huggingface_hub import HfApi
+import vecs
 import faiss as vdb
 
 from curiosity.data import load_documents
 
 
-def dataset(path='texonom-md', token=None):
-  documents = load_documents(path)
-  # for ignore root page that has limited property
-  dataset = Dataset.from_list(documents[1:])
-  print(f'Properteis: {dataset.column_names}')
+def pgvector(dataset_id="texonom/texonom-md", dimension=384,
+             prefix="", subset=None, stream=False, pgstring=None,
+             tei_host="localhost", tei_port='8080', tei_protocol="http",
+             batch_size=1000, start_index=None, end_index=None):
+  # Load DB and dataset
+  assert pgstring is not None
+  vx = vecs.create_client(pgstring)
+  docs = vx.get_or_create_collection(name="texonom-md", dimension=dimension)
+  dataset = load_dataset(dataset_id, subset, streaming=stream)['train']
 
-  # Upload to Huggingface Hub
-  if token is not None:
-    dataset.push_to_hub(f'texonom/{path}', token=token)
+  # Filter dataset
+  if not stream and end_index is not None:
+    dataset = dataset[:int(end_index)]
+    dataset = Dataset.from_dict(dataset)
+  if not stream and start_index is not None:
+    dataset = dataset[int(start_index):]
+    dataset = Dataset.from_dict(dataset)
 
+  # Batch processing function
+  teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol)
 
-if __name__ == '__main__':
-  fire.Fire()
+  def batch_encode(batch_data: Dict) -> Dict:
+    start = time.time()
+    batch_zip = zip(batch_data['id'], batch_data['title'],
+                    batch_data['refs'], batch_data['text'], batch_data['parent'], batch_data['created'],
+                    batch_data['edited'], batch_data['creator'], batch_data['editor'])
+    rows = [{'id': row[0], 'title': row[1], 'refs': row[2], 'text': row[3], 'parent': row[4],
+             'created': row[5], 'edited': row[6], 'creator': row[7], 'editor': row[8]}
+            for row in batch_zip]
+    input_texts = [
+        f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
+    embeddings = teiclient.embed_batch_sync(input_texts)
+    metadatas = [{'title': row['title'] if row['title'] is not None else '',
+                  'created': row['created'] if row['created'] is not None else '',
+                  'edited': row['edited'] if row['edited'] is not None else '',
+                  'creator': row['creator'] if row['creator'] is not None else '',
+                  'editor': row['editor'] if row['editor'] is not None else ''} for row in rows]
+    docs.upsert(records=[
+        (row['id'], embeddings[i], metadatas[i]) for i, row in enumerate(rows)
+    ])
+    print(
+        f"Batched {len(batch_data['id'])}rows takes ({time.time() - start:.2f}s)")
+    return {'embeddings': embeddings, 'query': input_texts}
+
+  # Batch processing
+  dataset.map(batch_encode, batched=True, batch_size=batch_size)
+  docs.create_index()
 
 
 def faiss(dataset_id="texonom/texonom-md",
