@@ -3,6 +3,7 @@ from typing import Dict
 import json
 import asyncio
 import aiohttp
+from re import sub
 
 import fire
 import numpy as np
@@ -45,6 +46,10 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
     rows = [{'id': row[0], 'title': row[1], 'refs': row[2], 'text': row[3], 'parent': row[4],
              'created': row[5], 'edited': row[6], 'creator': row[7], 'editor': row[8]}
             for row in batch_zip]
+    for row in rows:
+      row['text'] = sub(r'\(.*\)', '', row['text'])
+      row['text'] = sub(r'\n{1,}', '\n', row['text'])
+      row['text'] = row['text'].strip()[:3000]
     input_texts = [
         f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
     embeddings = teiclient.embed_batch_sync(input_texts)
@@ -98,9 +103,6 @@ def faiss(dataset_id="texonom/texonom-md",
     embeddings = teiclient.embed_batch_sync(input_texts)
     total_embeddings.extend(embeddings)
     total_ids.extend(batch_data['id'])
-    print()
-    print()
-    print()
     print(
         f"Batched {len(batch_data['id'])}rows takes ({time.time() - start:.2f}s)")
     return {'embeddings': embeddings, 'query': input_texts}
