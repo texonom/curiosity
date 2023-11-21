@@ -33,7 +33,7 @@ docker run -d --name tei --gpus all -p 8080:80 -v $volume:/data --pull always gh
 ```
 
 ```bash
-python hf_upload.py dataset
+python index_to.py pgvector
 ```
 
 5. Use embedding for recommendation

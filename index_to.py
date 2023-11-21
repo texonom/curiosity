@@ -1,9 +1,9 @@
 import time
 from typing import Dict
 import json
+from re import sub
 import asyncio
 import aiohttp
-from re import sub
 
 import fire
 import numpy as np
@@ -54,6 +54,7 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
         f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
     embeddings = teiclient.embed_batch_sync(input_texts)
     metadatas = [{'title': row['title'] if row['title'] is not None else '',
+                  'text': row['text'] if row['text'] is not None else '',
                   'created': row['created'] if row['created'] is not None else '',
                   'edited': row['edited'] if row['edited'] is not None else '',
                   'creator': row['creator'] if row['creator'] is not None else '',
