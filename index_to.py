@@ -20,7 +20,7 @@ from curiosity.data import load_documents
 def pgvector(dataset_id="texonom/texonom-md", dimension=384,
              prefix="", subset=None, stream=False, pgstring=None,
              tei_host="localhost", tei_port='8080', tei_protocol="http",
-             batch_size=1000, start_index=None, end_index=None):
+             batch_size=1000, start_index=None, end_index=None, limit=3000):
   # Load DB and dataset
   assert pgstring is not None
   vx = vecs.create_client(pgstring)
@@ -36,7 +36,7 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
     dataset = Dataset.from_dict(dataset)
 
   # Batch processing function
-  teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol)
+  teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol, limit=3000)
 
   def batch_encode(batch_data: Dict) -> Dict:
     start = time.time()
@@ -49,7 +49,7 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
     for row in rows:
       row['text'] = sub(r'\(.*\)', '', row['text'])
       row['text'] = sub(r'\n{1,}', '\n', row['text'])
-      row['text'] = row['text'].strip()[:3000]
+      row['text'] = row['text'].strip()[:limit]
     input_texts = [
         f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
     embeddings = teiclient.embed_batch_sync(input_texts)
