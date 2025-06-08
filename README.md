@@ -33,7 +33,9 @@ docker run -d --name tei --gpus all -p 8080:80 -v $volume:/data --pull always gh
 ```
 
 ```bash
-python index_to.py pgvector
+python index_to.py pgvector --pgstring <PGSTRING>
+# or for local onnx inference
+python index_to.py pgvector --pgstring <PGSTRING> --local
 ```
 
 5. Use embedding for recommendation
