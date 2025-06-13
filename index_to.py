@@ -10,6 +10,7 @@ import numpy as np
 import chromadb
 from datasets import load_dataset, Dataset
 from tei import TEIClient
+from curiosity.embedding import load_onnx, encode_onnx
 from huggingface_hub import HfApi
 import vecs
 import faiss as vdb
@@ -17,10 +18,18 @@ import faiss as vdb
 from curiosity.data import load_documents
 
 
+<<<<<<< feature/load-onnx-multilingual-e5-small-model-for-local-inference -- Incoming Change
+def pgvector(dataset_id="texonom/texonom-md", dimension=384,
+             prefix="", subset=None, stream=False, pgstring=None,
+             tei_host="localhost", tei_port='8080', tei_protocol="http",
+             batch_size=1000, start_index=None, end_index=None,
+             local=False, model_id="texonom/multilingual-e5-small-4096"):
+=======
 def pgvector(dataset_id="texonom/texonom-md", dimension=384,
              prefix="", subset=None, stream=False, pgstring=None,
              tei_host="localhost", tei_port='8080', tei_protocol="http",
              batch_size=1000, start_index=None, end_index=None, limit=3000):
+>>>>>>> main -- Current Change
   # Load DB and dataset
   assert pgstring is not None
   vx = vecs.create_client(pgstring)
@@ -35,8 +44,22 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
     dataset = dataset[int(start_index):]
     dataset = Dataset.from_dict(dataset)
 
+<<<<<<< feature/load-onnx-multilingual-e5-small-model-for-local-inference -- Incoming Change
+  # Batch processing function
+  if local:
+    tokenizer, session = load_onnx(model_id)
+
+    def embed(texts):
+      return encode_onnx(texts, tokenizer, session)
+  else:
+    teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol)
+
+    def embed(texts):
+      return teiclient.embed_batch_sync(texts)
+=======
   # Batch processing function
   teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol, limit=3000)
+>>>>>>> main -- Current Change
 
   def batch_encode(batch_data: Dict) -> Dict:
     start = time.time()
@@ -52,7 +75,7 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
       row['text'] = row['text'].strip()[:limit]
     input_texts = [
         f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
-    embeddings = teiclient.embed_batch_sync(input_texts)
+    embeddings = embed(input_texts)
     metadatas = [{'title': row['title'] if row['title'] is not None else '',
                   'text': row['text'] if row['text'] is not None else '',
                   'created': row['created'] if row['created'] is not None else '',

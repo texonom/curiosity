@@ -10,6 +10,7 @@ dependencies = [
     "teicli>=0.3.1",
     "faiss-cpu>=1.7.4",
     "vecs>=0.4.1",
+    "onnxruntime>=1.16.0",
 ]
 description = "Add your description here"
 name = "curiosity"
