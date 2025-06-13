@@ -18,11 +18,18 @@ import faiss as vdb
 from curiosity.data import load_documents
 
 
+<<<<<<< feature/load-onnx-multilingual-e5-small-model-for-local-inference -- Incoming Change
 def pgvector(dataset_id="texonom/texonom-md", dimension=384,
              prefix="", subset=None, stream=False, pgstring=None,
              tei_host="localhost", tei_port='8080', tei_protocol="http",
              batch_size=1000, start_index=None, end_index=None,
              local=False, model_id="texonom/multilingual-e5-small-4096"):
+=======
+def pgvector(dataset_id="texonom/texonom-md", dimension=384,
+             prefix="", subset=None, stream=False, pgstring=None,
+             tei_host="localhost", tei_port='8080', tei_protocol="http",
+             batch_size=1000, start_index=None, end_index=None, limit=3000):
+>>>>>>> main -- Current Change
   # Load DB and dataset
   assert pgstring is not None
   vx = vecs.create_client(pgstring)
@@ -37,6 +44,7 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
     dataset = dataset[int(start_index):]
     dataset = Dataset.from_dict(dataset)
 
+<<<<<<< feature/load-onnx-multilingual-e5-small-model-for-local-inference -- Incoming Change
   # Batch processing function
   if local:
     tokenizer, session = load_onnx(model_id)
@@ -48,6 +56,10 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
 
     def embed(texts):
       return teiclient.embed_batch_sync(texts)
+=======
+  # Batch processing function
+  teiclient = TEIClient(host=tei_host, port=tei_port, protocol=tei_protocol, limit=3000)
+>>>>>>> main -- Current Change
 
   def batch_encode(batch_data: Dict) -> Dict:
     start = time.time()
@@ -60,7 +72,7 @@ def pgvector(dataset_id="texonom/texonom-md", dimension=384,
     for row in rows:
       row['text'] = sub(r'\(.*\)', '', row['text'])
       row['text'] = sub(r'\n{1,}', '\n', row['text'])
-      row['text'] = row['text'].strip()[:3000]
+      row['text'] = row['text'].strip()[:limit]
     input_texts = [
         f"{prefix}{row['title']}\n{row['text']}\n{row['refs']}\nParent: {row['parent']}" for row in rows]
     embeddings = embed(input_texts)

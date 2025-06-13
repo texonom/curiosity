@@ -20,6 +20,7 @@ wheels/
 chroma.log
 chroma.sqlite3-journal
 chroma
+.env
 
 # faiss
 faiss
